@@ -1,3 +1,25 @@
+Tue, 24.11.1998
+---------------
+- ftn-addresses can also be 3D now (hopefully) not tested yet
+
+Mon, 23.11.1998
+---------------
+- packmail works now completely
+- movemail works now also
+
+Sun, 22.11.1998
+---------------
+- packmail rewritten completely (surprisingly it also works)
+- some error handling
+
+Sat, 21.11.1998
+---------------
+- packmail works more or less (no support for multiple messages per packet yet)
+
+Fri, 20.11.1998
+---------------
+- started implementing packmail action
+
 Thu, 19.11.1998
 ---------------
 - keywords no longer case-sensitive
