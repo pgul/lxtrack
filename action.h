@@ -3,7 +3,7 @@
 #include "area.h"
 extern "C"
 {
-#include "../smapi/msgapi.h"
+#include <smapi/msgapi.h>
 }
 
 class CAction
@@ -180,24 +180,21 @@ class CIgnoreAction:public CAction
 		int run();
 };
 
-class CPackMailAction:public CAction
+class CPackmailAction:public CAction
 {
 	public:
 		CFtnAddr F_From;
 		CFtnAddr F_To;
-		string 	s_passwd;
 		int run();
 	protected:
 		FILE *f_pkt;
 };
 
-class CMoveMailAction:public CAction
+class CMovemailAction:public CAction
 {
 	public:
 		CFtnAddr F_From;
 		CFtnAddr F_To;
-		string 	s_passwd;
-		string	s_Path;
 		int run();
 	protected:
 		FILE *f_pkt;
