@@ -1,7 +1,13 @@
 #include <string>
+#ifdef __GNUC__
 #include <cstring>
 #include <cstdio>
+#else
+#include <string.h>
+#include <stdio.h>
+#endif
 #include "config.h"
+#include "strsep.h"
 #include "mask.h"
 	
 
@@ -27,8 +33,8 @@ string CConfig::getLine()
 	line = new char[256];
 	if (fgets(line, 256, cfgFile)==NULL) return "\n";
 	for (;counter<strlen(line);counter++) if (line[counter]==92) line[counter]='\\';
-	if (line[0]==' ') strsep(&line, " ");
-	line = strsep(&line, "\n");
+	if (line[0]==' ') strseparate(&line, " ");
+	line = strseparate(&line, "\n");
 	order = line;
 	delete [] line;
 	return order;
@@ -49,6 +55,7 @@ param CConfig::getParam(string line)
 	while (line[0]==' ') line.erase(0,1);	
 	parm.s_Token=token;
 	parm.s_RestOfLine=line;
+	for (unsigned int i=0;i<parm.s_Token.length();i++) parm.s_Token[i]=tolower(parm.s_Token[i]);
 	return parm;
 }
 
@@ -88,8 +95,7 @@ CConfig::CConfig()
 	
 	int scn=-1, msk=-1, actn=-1;
 	
-
-	openConfig("lxtrack.cfg");
+	openConfig(CONFIGDIR);
 	while ((s_Line=getLine())!="\n") 
 	{
 		if (s_Line=="") continue;
@@ -97,28 +103,45 @@ CConfig::CConfig()
 		if (parm.s_Token=="home")
 		{
 			s_Home=parm.s_RestOfLine;
+			F_Home=const_cast<char*>(s_Home.c_str());
 		}
 		if (parm.s_Token=="log")
 		{
 			s_Log=parm.s_RestOfLine;
+		}
+		if (parm.s_Token=="outbound")
+		{
+			s_Outbound=parm.s_RestOfLine;
+		}
+		if (parm.s_Token=="inbound")
+		{
+			s_Inbound=parm.s_RestOfLine;
 		}
 		if (parm.s_Token=="scandir") 
 		{
 			scn++;
 			CScandir scndr(parm.s_RestOfLine);
 			S_Scandir.push_back(scndr);
-			if (msk!=-1) S_Scandir[scn].firstMask=msk+1;
-			else S_Scandir[scn].firstMask=0;
-			if (scn>0) S_Scandir[scn-1].lastMask=msk;
+			if (scn==0) 
+				S_Scandir[scn].firstMask=0;
+			else
+			{
+				S_Scandir[scn].firstMask=msk+1;
+				S_Scandir[scn-1].lastMask=msk;
+			}
 		}
 		if (parm.s_Token=="mask")
 		{
 			msk++;
 			COperation op(parm.s_RestOfLine);
 			O_Op.push_back(op);
-			if (actn!=-1) O_Op[msk].firstAction=actn+1;
-			else O_Op[msk].firstAction=0;
-			if (msk>0) O_Op[msk-1].lastAction=actn;
+			if (msk==0)
+				O_Op[msk].firstAction=0;
+			else
+			{
+				O_Op[msk].firstAction=actn+1;
+				O_Op[msk-1].lastAction=actn;
+			}
 		}
 		if (parm.s_Token=="action")
 		{
@@ -130,6 +153,7 @@ CConfig::CConfig()
 	}
 	if (S_Scandir.size()==1) S_Scandir[0].lastMask=O_Op.size()-1; 
 	if (O_Op.size()==1) O_Op[0].lastAction=A_Action.size()-1;
+	S_Scandir[S_Scandir.size()-1].lastMask=O_Op.size()-1;
 	O_Op[O_Op.size()-1].lastAction=A_Action.size()-1;
 	closeConfig();	 
 }

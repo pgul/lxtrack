@@ -2,7 +2,11 @@
 #define _AREA_H_
 #include <vector>
 #include <string>
+#ifdef IS_NOTGCC
+#include <stdio.h>
+#else
 #include <cstdio>
+#endif
 #include "mask.h"
 #include "op.h"
 #include "action.h"
@@ -24,7 +28,6 @@ class CArea
 		int		Open();
 		int 		Close();
 		int		Scan(vector<COperation> M_ScanFor, vector<CAction> Execute, unsigned int start, unsigned int stop);
-		int 		ExAction(vector<CAction> A_ToExec, vector<int> &i_match, unsigned int start, unsigned int stop);
 		HAREA		GetArea();
 		CArea();
 		CArea(const CArea& ar);
