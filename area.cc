@@ -5,15 +5,17 @@
 #include "area.h"
 #include "config.h"
 #include "log.h"
+#include "global.h"
 
 int initApi()
 {
 	struct _minf m;
 	m.req_version = 0;
-   m.def_zone = 2;
-   if (MsgOpenApi(&m) != 0) {
-      exit(1);
-   }
+        m.def_zone = cfg->F_Home.zone;
+        if (MsgOpenApi(&m) != 0) 
+	{
+        	exit(1);
+   	}
 	return 0;
 }
 
@@ -51,14 +53,13 @@ int CArea::Open(string Path)
 	if (a_Area!=NULL)
 	{
 		i_msgNum=MsgGetHighMsg(a_Area);
-                CLog log;
-		log.noclose=true;
 		string logstr="opening area " + s_Path;
-                log.add(1, logstr);
+                log->add(1, logstr);
 		return 0;
 	}
 	else
 	{
+		a_Area=NULL;
 		cerr << "Could not open area: \"" << Path << "\"!\n";
 		return -1;
 	}
@@ -70,14 +71,13 @@ int CArea::Open()
 	if (a_Area!=NULL)
 	{
 		i_msgNum=MsgGetHighMsg(a_Area);
-		CLog log;
-		log.noclose=true;
 		string logstr="opening area " + s_Path;
-		log.add(1, logstr);
+		log->add(1, logstr);
 		return 0;
 	}
 	else
 	{
+		a_Area=NULL;
 		cerr << "Could not open area:" << s_Path << "!\n";
 		return -1;
 	}
@@ -107,13 +107,17 @@ int CArea::Scan(vector<COperation> M_ScanFor, vector<CAction> A_Execute, unsigne
    CMsg Message;
    CMask actualMask;
    int num=1;
-        
-   for (unsigned int i=1;i<i_msgNum;i++)
+   int result;
+   for (unsigned int i=1;i<i_msgNum+1;i++)
    {
-       Message.Open(i, a_Area);
+       result=Message.Open(i, a_Area);
+       if (result==-1)
+       {
+	  continue;
+       }
        for (unsigned int j=start;j<stop+1;j++)
-       {	
-          actualMask=Message.GetMask();
+       {
+	  actualMask=Message.GetMask();
 	  /*------------ scan for matching mask ---------------*/
 	  if (M_ScanFor[j].M_Mask==actualMask) 
     	  {
@@ -125,10 +129,11 @@ int CArea::Scan(vector<COperation> M_ScanFor, vector<CAction> A_Execute, unsigne
 	        string type;
 		string RestParam;
 		string temp;
+
 		/*------ write action data to vars -------*/
 		temp=A_Execute[k].param;
         	while (temp[0]==' ') temp.erase(0,1);
-	        if (temp[temp.size()]=='\n') temp.erase(temp.size(), 1);
+	        if (temp[temp.length()-1]=='\n') temp.erase(temp.length()-1, 1);
         	do
         	{
                    type+=temp[0];
@@ -138,6 +143,7 @@ int CArea::Scan(vector<COperation> M_ScanFor, vector<CAction> A_Execute, unsigne
         	RestParam=temp;
 		char number[6];
 		sprintf(number, "%i", i);
+
 		/*----- action file -----*/
 		if (type=="file")
 		{
@@ -186,49 +192,61 @@ int CArea::Scan(vector<COperation> M_ScanFor, vector<CAction> A_Execute, unsigne
                    TempAction.msgnum=i;
                    TempAction.run();
                 }
-
+		/*-------- packmail action -------*/
+		if (type=="packmail")
+		{
+		    if (((Message.d_Attr & MSGSENT) != MSGSENT) && ((Message.d_Attr & MSGLOCAL) == MSGLOCAL))
+		    {
+		       CPackmailAction TempAction;
+		       TempAction.param=RestParam;
+		       TempAction.Area=a_Area;
+		       TempAction.msgnum=i;
+		       TempAction.run();
+		    }
+		}
+		/*-------- movemail action -------*/
+	        if (type=="movemail")
+                {
+                    if (((Message.d_Attr & MSGSENT) != MSGSENT) && ((Message.d_Attr & MSGLOCAL) == MSGLOCAL))
+                    {
+                       CMovemailAction TempAction;
+                       TempAction.param=RestParam;
+                       TempAction.Area=a_Area;
+                       TempAction.msgnum=i;
+                       TempAction.run();
+                    }
+                }
+		/*-------- rewrite action -----------*/
+		if (type=="rewrite")
+		{
+		    CRewriteAction TempAction;
+		    TempAction.param=RestParam;
+		    TempAction.Area=a_Area;
+		    TempAction.msgnum=i;
+		    TempAction.run();
+		}
+		/*--------- display action ----------*/
+		if (type=="display")
+		{
+		    CDisplayAction TempAction;
+		    TempAction.param=RestParam;
+		    TempAction.run();
+		}
+		
+		/*------- semaphore action ----------*/
+		if (type=="semaphore")
+		{
+		    CSemaphoreAction TempAction;
+		    TempAction.param=RestParam;
+	            TempAction.run();
+		}
 		num++;
              }
+	     Message.Close();
 	  }
-      Message.Close();
       }
    }
 	return 0;
 }
 
-int CArea::ExAction(vector<CAction> A_ToExec, vector<int> &i_match, unsigned int start, unsigned int stop)
-{
-	unsigned int i;
-	unsigned int j;
-	char * buf=new char[48];
-	char * buf2= new char[48];
-
-	for (i=start;i<stop+1;i++)
-	{
-		strcpy(buf,const_cast<char*>(A_ToExec[i].param.c_str()));
-		buf2=strsep(&buf, " ");
-		string type=buf2;
-		if (type=="copy") cout << "copying message" << endl;
-		if (type=="move") cout << "moving message" << endl;
-		if (type=="delete") cout << "deleting message" << endl;
-		if (type=="file")
-		{
-			CFileAction TempAction;
-			cout << "about to loop!" << endl;
-			cout << "size: " << i_match.size() << endl;
-			for (j=0;j<i_match.size();j++)
-			{
-				cout << "start looping";
-				TempAction.s_Filename=buf;
-				TempAction.s_Filename+=j;
-				TempAction.msgnum=i_match[j];
-				TempAction.Area=a_Area;
-				TempAction.run();
-				cout << "filing" << endl;
-			}
-		}
-		if (type=="rewrite") cout << "rewriting message" << endl;
-	}
-	return 0;
-} 
 

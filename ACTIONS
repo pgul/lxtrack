@@ -6,3 +6,6 @@ file
 hdrfile
 bounce
 packmail
+movemail
+rewrite
+semaphore
