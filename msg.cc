@@ -36,7 +36,7 @@ int CMsg::Open(int i_num, HAREA area)
 	if (hmsg==NULL) 
 	{
 		cerr << "could not open message" << endl;
-		exit(0);
+		return -1;
 	}
 	i_CtrlLen=MsgGetCtrlLen(hmsg);
 	i_TextLen = MsgGetTextLen(hmsg);
@@ -50,6 +50,7 @@ int CMsg::Open(int i_num, HAREA area)
 	s_Subject=(char *)xmsg.subj;
 	F_From=xmsg.orig;
 	F_To=xmsg.dest;
+	d_Attr=xmsg.attr;
 	i_number=i_num;
 	delete [] buf1;
 	delete [] buf2;
@@ -59,7 +60,11 @@ int CMsg::Open(int i_num, HAREA area)
 int CMsg::New(HAREA area)
 {
 	hmsg= MsgOpenMsg(area, MOPEN_CREATE, 0);
-	if (hmsg==NULL) return -1;
+	if (hmsg==NULL) 
+	{
+		cerr << "Unable to create message!";
+		return -1;
+	}
 	return 0;
 }
 
@@ -109,6 +114,7 @@ int CMsg::Write()
         xmsg.dest.net=F_To.net;
         xmsg.dest.node=F_To.node;
         xmsg.dest.point=F_To.point;
+	xmsg.attr=d_Attr;
 	i_TextLen=s_MsgText.length()+1;
 	i_CtrlLen=s_Ctrl.length()+1;
 	MsgWriteMsg(hmsg, 0, &xmsg, const_cast<unsigned char*>(reinterpret_cast<const unsigned char*>(s_MsgText.c_str())), i_TextLen, i_TextLen+i_CtrlLen, i_CtrlLen, const_cast<char*>(s_Ctrl.c_str()));
@@ -132,11 +138,13 @@ int CMsg::Close()
 	return 0;
 }
 
+
 int CMsg::Delete(HAREA Area)
 {
 	if (hmsg!=NULL) {
-		MsgCloseMsg(hmsg);
 		MsgKillMsg(Area, i_number);
+/*		MsgCloseMsg(hmsg);
+		MsgKillMsg(Area, i_number);*/
 	}
 	return 0;
 }
